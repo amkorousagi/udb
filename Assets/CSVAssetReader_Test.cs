@@ -47,6 +47,22 @@ public class CSVAssetReader_Test : MonoBehaviour
     public Text valueName;
     public Text value;
 
+    public GameObject arrowPink;
+    public GameObject arrowGreen;
+    public List<GameObject> arrows;
+    public float animTime = 2f;
+    public float sss = 0.8f;
+
+    public Transform variables;
+    public GameObject variableOriginal;
+    public GameObject CLine;
+    string[] lines;
+    List<Tuple<string,int>> vs = new List<Tuple<string, int>>();
+
+    private float start = 1;
+    private float end = 0;
+    private float time = 0;
+    bool fadeFlag = false;
     int lineInt;
     string ofString;
     string exportData;
@@ -54,6 +70,143 @@ public class CSVAssetReader_Test : MonoBehaviour
     List<string> kl2;
     List<Dictionary<string, object>> data;
     int diffCnt;
+
+    public void Update()
+    {
+        //call FadeIn if flaged
+        if (fadeFlag && time <=animTime)
+        {
+            FadeIn();
+        }
+    }
+    public void InitFadeIn()
+    {
+        CLine.GetComponent<Text>().text = lines[Int32.Parse(data[currentRow][kl[0]].ToString()) - 1];
+        string ss = CLine.GetComponent<Text>().text;
+        foreach (String s in kl)
+        {
+            if (ss.IndexOf(s) != -1)
+            {
+                vs.Add(new Tuple<string,int>(s, ss.IndexOf(s)));
+            }
+        }
+
+        for(int i=0; i<vs.Count;i++)
+        {
+            if (vs[i].Item2 - 1 >= 0)
+            {
+                if ((ss[vs[i].Item2 - 1] >= 'a' && ss[vs[i].Item2 - 1] <= 'z') || (ss[vs[i].Item2 - 1] >= 'A' && ss[vs[i].Item2 - 1] <= 'Z'))
+                {
+                    vs.RemoveAt(i);
+                    i--;
+                }
+            }
+        }
+        for (int i = 0; i < vs.Count; i++)
+        {
+            for (int j = 0; j < vs.Count; j++)
+            {
+                if(vs[j].Item2 == vs[i].Item2)
+                {
+                    if (vs[i].Item1.Length > vs[j].Item1.Length)
+                    {
+                        vs.RemoveAt(j);
+                        j--;
+                    }
+                }
+            }
+
+        }
+        foreach (Tuple<string,int> t in vs)
+        {
+            GameObject go = GameObject.Instantiate(variableOriginal, variables);
+            go.transform.GetChild(0).GetComponent<Text>().text = t.Item1;
+            go.transform.GetChild(1).GetComponent<Text>().text = data[currentRow+1][t.Item1].ToString();
+
+            int i = ss.IndexOf('=');
+            if(i < t.Item2)
+            {
+                GameObject a = GameObject.Instantiate(arrowPink,go.transform);
+                //scale, position
+                a.GetComponent<RectTransform>().position = go.GetComponent<RectTransform>().position;
+                RectTransform r = CLine.GetComponent<RectTransform>();
+                Vector3 dest = new Vector3((float)(r.position.x + r.rect.width * ((float)t.Item2 / ss.Length)-250), r.position.y, r.position.z);
+
+                int ii = variables.transform.childCount;
+                Vector3 src = variables.GetComponent<RectTransform>().position + new Vector3(-200,100,0) + new Vector3(((ii - 1) % 5) * 100, ((ii - 1) / 5) * 100, 0);
+                float v = Vector3.Distance(src, dest);
+
+                Debug.Log(src);
+                Debug.Log(dest);
+                a.transform.localScale = new Vector3(a.transform.localScale.x, sss*v/a.GetComponent<RectTransform>().rect.height , a.transform.localScale.z);
+                a.GetComponent<RectTransform>().eulerAngles = new Vector3(a.GetComponent<RectTransform>().eulerAngles.x, a.GetComponent<RectTransform>().eulerAngles.y, (src.x < dest.x ? -1 : 1)*Vector3.Angle(Vector3.up, -src + dest));
+                arrows.Add(a);
+            }
+            else
+            {
+                GameObject a = GameObject.Instantiate(arrowGreen,CLine.transform);
+                //scale, position
+                RectTransform r = CLine.GetComponent<RectTransform>();
+                a.GetComponent<RectTransform>().position = new Vector3((float)(r.position.x + r.rect.width * ((float)t.Item2 / ss.Length - 0.5)),r.position.y,r.position.z);
+
+                int ii = variables.transform.childCount;
+                Vector3 src = new Vector3((float)(r.position.x + r.rect.width * ((float)t.Item2 / ss.Length))-250, r.position.y, r.position.z);
+                Vector3 dest = variables.GetComponent<RectTransform>().position + new Vector3(-200, 100, 0) + new Vector3(((ii-1) % 5) * 100, ((ii-1) / 5) * 100, 0);
+                float v = Vector3.Distance(src, dest);
+
+                Debug.Log(ii);
+                Debug.Log(variables.GetComponent<RectTransform>().position);
+                Debug.Log(src);
+                Debug.Log(dest);
+                a.transform.localScale = new Vector3(a.transform.localScale.x, sss*v / a.GetComponent<RectTransform>().rect.height , a.transform.localScale.z);
+                a.GetComponent<RectTransform>().eulerAngles = new Vector3(a.GetComponent<RectTransform>().eulerAngles.x, a.GetComponent<RectTransform>().eulerAngles.y, (src.x<dest.x?-1:1)*Vector3.Angle(Vector3.up, -src+dest));
+
+
+                arrows.Add(a);
+            }
+        
+        }
+        fadeFlag = true;
+        time = 0;
+        // search variable in current code
+        // instanciate arrow(head) with if assigned, 위치 결정 문자열 길이, 문자 위치...
+        // instanciate variable(+value), value
+        // set flag
+    }
+    public void ClearFadeIn()
+    {
+        // this called by Next
+        // clear prior fadein results
+        vs.Clear();
+        foreach(Transform t in variables)
+        {
+            GameObject.Destroy(t.gameObject);
+        }
+        variables.transform.DetachChildren();
+        foreach(GameObject g in arrows)
+        {
+            GameObject.Destroy(g);
+        }
+        arrows.Clear();
+    }
+    private void FadeIn()
+    {
+        time += Time.deltaTime / animTime;
+        // this called by Update
+        foreach (GameObject a in arrows)
+        {
+            foreach (Transform t in a.transform.GetChild(0))
+            {
+                foreach (Transform tt in t)
+                {
+                    Color c = tt.GetComponent<Image>().color;
+                    c.a = Mathf.Lerp(end, start, time);
+                    tt.GetComponent<Image>().color = c;
+                }
+            }
+        }
+        // plus alpha value
+    }
     public void ShowValue(int r, string n)
     {
         valuePanel.SetActive(true);
@@ -99,7 +252,7 @@ public class CSVAssetReader_Test : MonoBehaviour
             }
         }
     }
-
+    
     public void ClearDetail()
     {
         foreach(Transform child in line3)
@@ -115,7 +268,7 @@ public class CSVAssetReader_Test : MonoBehaviour
     public void OnEnable()
     {
         prior.interactable = false;
-        string[] lines = Regex.Split(file.text, @"\n");
+        lines = Regex.Split(file.text, @"\n");
         int cnt=0;
         for (int i = 0; i < lines.Length; i++)
         {
@@ -248,7 +401,10 @@ public class CSVAssetReader_Test : MonoBehaviour
         }
     }
     public void Next()
-    {   diffCnt = 0;
+    {
+        ClearFadeIn();
+        InitFadeIn();
+        diffCnt = 0;
         foreach(string s in kl2)
         {
             if(!data[currentRow][s].Equals(data[currentRow + 1][s]))
