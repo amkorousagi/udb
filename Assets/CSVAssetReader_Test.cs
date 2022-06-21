@@ -7,16 +7,12 @@ using UnityEngine.UI;
 
 public class CSVAssetReader_Test : MonoBehaviour
 {
-    public Text fildText;
-    public Text findFildText;
     public int currentRow;
     public int priorRow = -1;
 
     [Header("로드할 TextAsset 데이터를 넣어주세요")]
     public TextAsset myTxt;
 
-    public InputField idFild;
-    public InputField objectFild;
 
     public Transform content;
     public GridLayoutGroup table;
@@ -29,6 +25,7 @@ public class CSVAssetReader_Test : MonoBehaviour
     public Transform line2;
 
     public TextAsset file;
+    public TextAsset log;
     public Transform code;
     public Image original3;
     public Image originalHead;
@@ -41,6 +38,8 @@ public class CSVAssetReader_Test : MonoBehaviour
     public Transform detailName;
     public Transform step;
     public Transform info;
+    public GameObject outputHead;
+    public GameObject funcHead;
     public GameObject DetailPanel;
 
     public GameObject valuePanel;
@@ -56,6 +55,9 @@ public class CSVAssetReader_Test : MonoBehaviour
     public Transform variables;
     public GameObject variableOriginal;
     public GameObject CLine;
+    public Text logText;
+
+
     string[] lines;
     List<Tuple<string,int>> vs = new List<Tuple<string, int>>();
 
@@ -63,14 +65,137 @@ public class CSVAssetReader_Test : MonoBehaviour
     private float end = 0;
     private float time = 0;
     bool fadeFlag = false;
-    int lineInt;
-    string ofString;
-    string exportData;
     List<string> kl;
     List<string> kl2;
     List<Dictionary<string, object>> data;
     int diffCnt;
 
+
+    string[] reser = {"#include", };
+    string[] syn = { "for", "if", "return", };
+    string[] ty = { "int", "void", };
+    private string hili(string s)
+    {
+        string result = "";
+        int start = 0;
+        foreach(string r in reser)
+        {
+            start = 0;
+            result = "";
+            for (; ; )
+            {
+                if (s.IndexOf(r, start) == -1)
+                {
+                    break;
+                }
+                else
+                {
+                    if ((s[s.IndexOf(r, start) + r.Length] >= 'a' && s[s.IndexOf(r, start) + r.Length] <= 'z') || (s[s.IndexOf(r, start) + r.Length] >= 'A' && s[s.IndexOf(r, start) + r.Length] <= 'Z'))
+                    {
+                        result += s.Substring(start, s.IndexOf(r, start) - start) + r;
+                        start = s.IndexOf(r, start) + r.Length;
+                    }
+                    else
+                    {
+                        result += s.Substring(start, s.IndexOf(r, start) - start) + "<color=blue>" + r + "</color>";
+                        start = s.IndexOf(r, start) + r.Length;
+                    }
+                }
+            }
+            result += s.Substring(start);
+            s = result;
+        }
+        foreach (string r in ty)
+        {
+            start = 0;
+            result = "";
+            for (; ; )
+            {
+                if (s.IndexOf(r, start) == -1)
+                {
+                    break;
+                }
+                else
+                {
+                    if ((s[s.IndexOf(r, start) + r.Length] >= 'a' && s[s.IndexOf(r, start) + r.Length] <= 'z') || (s[s.IndexOf(r, start) + r.Length] >= 'A' && s[s.IndexOf(r, start) + r.Length] <= 'Z'))
+                    {
+                        result += s.Substring(start, s.IndexOf(r, start) - start) + r;
+                        start = s.IndexOf(r, start) + r.Length;
+                    }
+                    else
+                    {
+                        result += s.Substring(start, s.IndexOf(r, start) - start) + "<color=green>" + r + "</color>";
+                        start = s.IndexOf(r, start) + r.Length;
+                    }
+                }
+            }
+            result += s.Substring(start);
+            s = result;
+        }
+        
+        foreach (string r in syn)
+        {
+            start = 0;
+            result = "";
+            for (; ; ) {
+                Debug.Log(syn.Length);
+                Debug.Log(r);
+                if (r == "return")
+                {
+                    Debug.Log(s);
+                }
+
+                if (s.IndexOf(r, start) == -1)
+                {
+                    break;
+                }
+                else
+                {
+                    if (r == "return")
+                    {
+                        Debug.Log(s);
+                        Debug.Log(result);
+                        Debug.Log(s[s.IndexOf(r, start) + r.Length]);
+                        Debug.Log(s.IndexOf(r, start));
+                        Debug.Log(start);
+                    }
+                    if ((s[s.IndexOf(r, start) + r.Length] >= 'a' && s[s.IndexOf(r, start) + r.Length] <= 'z') || (s[s.IndexOf(r, start) + r.Length] >= 'A' && s[s.IndexOf(r, start) + r.Length] <= 'Z'))
+                    {
+                        result += s.Substring(start, s.IndexOf(r, start) - start) + r;
+                        start = s.IndexOf(r, start) + r.Length;
+                    }
+                    else
+                    {
+                        result += s.Substring(start, s.IndexOf(r, start) - start) + "<color=purple>" + r + "</color>";
+                        start = s.IndexOf(r, start) + r.Length;
+                    }
+                } 
+            }
+            result += s.Substring(start);
+            s = result;
+        }
+        return result;
+    }
+    public void J2E()
+    {
+        if (log.text.IndexOf("error") != -1)
+        {
+            currentRow = data.Count - 2;
+            Next();
+        }
+        else
+        {
+            valuePanel.SetActive(true);
+            valueName.text = "no error";
+            value.text = "No Error";
+        }
+    }
+    public void DetailLog()
+    {
+        valuePanel.SetActive(true);
+        valueName.text = "log";
+        value.text = log.text;
+    }
     public void Update()
     {
         //call FadeIn if flaged
@@ -81,13 +206,26 @@ public class CSVAssetReader_Test : MonoBehaviour
     }
     public void InitFadeIn()
     {
-        CLine.GetComponent<Text>().text = lines[Int32.Parse(data[currentRow][kl[0]].ToString()) - 1];
+        CLine.GetComponent<Text>().text = hili(lines[Int32.Parse(data[currentRow][kl[0]].ToString()) - 1]);
         string ss = CLine.GetComponent<Text>().text;
         foreach (String s in kl)
         {
             if (ss.IndexOf(s) != -1)
             {
                 vs.Add(new Tuple<string,int>(s, ss.IndexOf(s)));
+                int k = ss.IndexOf(s) + s.Length;
+                for(; ; )
+                {
+                    if(ss.IndexOf(s,k) == -1)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        vs.Add(new Tuple<string, int>(s, ss.IndexOf(s, k)));
+                        k = ss.IndexOf(s, k) + s.Length;
+                    }
+                }
             }
         }
 
@@ -100,23 +238,73 @@ public class CSVAssetReader_Test : MonoBehaviour
                     vs.RemoveAt(i);
                     i--;
                 }
+                else if ((ss[vs[i].Item2 + vs[i].Item1.Length] >= 'a' && ss[vs[i].Item2 + vs[i].Item1.Length] <= 'z') || (ss[vs[i].Item2 + vs[i].Item1.Length] >= 'A' && ss[vs[i].Item2 + vs[i].Item1.Length] <= 'Z'))
+                {
+                    vs.RemoveAt(i);
+                    i--;
+                }
+                else if(ss[vs[i].Item2 - 1] == '['|| ss[vs[i].Item2 + vs[i].Item1.Length] == ']')
+                {
+                    vs.RemoveAt(i);
+                    i--;
+                }
+            }
+            else
+            {
+                if ((ss[vs[i].Item2 + vs[i].Item1.Length] >= 'a' && ss[vs[i].Item2 + vs[i].Item1.Length] <= 'z') || (ss[vs[i].Item2 + vs[i].Item1.Length] >= 'A' && ss[vs[i].Item2 + vs[i].Item1.Length] <= 'Z'))
+                {
+                    vs.RemoveAt(i);
+                    i--;
+                }
+                else if (ss[vs[i].Item2 + vs[i].Item1.Length] == ']')
+                {
+                    vs.RemoveAt(i);
+                    i--;
+                }
             }
         }
         for (int i = 0; i < vs.Count; i++)
         {
             for (int j = 0; j < vs.Count; j++)
             {
-                if(vs[j].Item2 == vs[i].Item2)
+                if (i != j)
                 {
-                    if (vs[i].Item1.Length > vs[j].Item1.Length)
+                    if (i < vs.Count && j < vs.Count)
                     {
-                        vs.RemoveAt(j);
-                        j--;
+                        if (vs[j].Item2 == vs[i].Item2)
+                        {
+                            if (vs[i].Item1.Length > vs[j].Item1.Length)
+                            {
+                                vs.RemoveAt(j);
+                                j--;
+                            }
+                        }
                     }
                 }
             }
 
         }
+        for (int i = 0; i < vs.Count; i++)
+        {
+            for (int j = 0; j < vs.Count; j++)
+            {
+                if (i != j)
+                {
+                    if (i < vs.Count && j < vs.Count)
+                    {
+                        
+                        if (vs[i].Item1 == vs[j].Item1)
+                        {
+                            vs.RemoveAt(j);
+                            j--;
+                        }
+                        
+                    }
+                }
+            }
+
+        }
+
         foreach (Tuple<string,int> t in vs)
         {
             GameObject go = GameObject.Instantiate(variableOriginal, variables);
@@ -124,7 +312,8 @@ public class CSVAssetReader_Test : MonoBehaviour
             go.transform.GetChild(1).GetComponent<Text>().text = data[currentRow+1][t.Item1].ToString();
 
             int i = ss.IndexOf('=');
-            if(i < t.Item2)
+            
+            if(i < t.Item2 && ss.IndexOf('=',i+1)== -1)
             {
                 GameObject a = GameObject.Instantiate(arrowPink,go.transform);
                 //scale, position
@@ -136,8 +325,6 @@ public class CSVAssetReader_Test : MonoBehaviour
                 Vector3 src = variables.GetComponent<RectTransform>().position + new Vector3(-200,100,0) + new Vector3(((ii - 1) % 5) * 100, ((ii - 1) / 5) * 100, 0);
                 float v = Vector3.Distance(src, dest);
 
-                Debug.Log(src);
-                Debug.Log(dest);
                 a.transform.localScale = new Vector3(a.transform.localScale.x, sss*v/a.GetComponent<RectTransform>().rect.height , a.transform.localScale.z);
                 a.GetComponent<RectTransform>().eulerAngles = new Vector3(a.GetComponent<RectTransform>().eulerAngles.x, a.GetComponent<RectTransform>().eulerAngles.y, (src.x < dest.x ? -1 : 1)*Vector3.Angle(Vector3.up, -src + dest));
                 arrows.Add(a);
@@ -154,10 +341,6 @@ public class CSVAssetReader_Test : MonoBehaviour
                 Vector3 dest = variables.GetComponent<RectTransform>().position + new Vector3(-200, 100, 0) + new Vector3(((ii-1) % 5) * 100, ((ii-1) / 5) * 100, 0);
                 float v = Vector3.Distance(src, dest);
 
-                Debug.Log(ii);
-                Debug.Log(variables.GetComponent<RectTransform>().position);
-                Debug.Log(src);
-                Debug.Log(dest);
                 a.transform.localScale = new Vector3(a.transform.localScale.x, sss*v / a.GetComponent<RectTransform>().rect.height , a.transform.localScale.z);
                 a.GetComponent<RectTransform>().eulerAngles = new Vector3(a.GetComponent<RectTransform>().eulerAngles.x, a.GetComponent<RectTransform>().eulerAngles.y, (src.x<dest.x?-1:1)*Vector3.Angle(Vector3.up, -src+dest));
 
@@ -212,6 +395,12 @@ public class CSVAssetReader_Test : MonoBehaviour
         valuePanel.SetActive(true);
         valueName.text = n;
         value.text = data[r][n].ToString();
+    }
+    public void ShowCode(int r)
+    {
+        valuePanel.SetActive(true);
+        valueName.text = "line "+r;
+        value.text = lines[r];
     }
     public static void InsertionSort<T>(IList<T> list, Comparison<T> comparison)
     {
@@ -272,7 +461,10 @@ public class CSVAssetReader_Test : MonoBehaviour
         int cnt=0;
         for (int i = 0; i < lines.Length; i++)
         {
-            Image.Instantiate(original3, code).transform.GetChild(0).GetComponent<Text>().text = lines[i];
+            Image temp = Image.Instantiate(original3, code);
+            temp.transform.GetChild(0).GetComponent<Text>().text = hili(lines[i]);
+            int a = i;
+            temp.GetComponent<Button>().onClick.AddListener(delegate { ShowCode(a); });
             Image.Instantiate(original2, line2).transform.GetChild(0).GetComponent<Text>().text = (++cnt).ToString();
         }
         TextLoard();
@@ -560,25 +752,16 @@ public class CSVAssetReader_Test : MonoBehaviour
             {
                 Image temp = Image.Instantiate(originalInfo, info);
                 temp.transform.GetChild(0).GetComponent<Text>().text = data[i][kl[j]].ToString();
+                int c = j;
+                int a = i;
+                temp.GetComponent<Button>().onClick.AddListener(delegate { ShowValue(a,kl[c]); });
             }
         }
+        outputHead.GetComponent<Button>().onClick.AddListener(delegate { DetailTable("output"); });
+        funcHead.GetComponent<Button>().onClick.AddListener(delegate { DetailTable("func"); });
     }
 
-    public void FindFildData()  // 찾는 데이터의 번호 / 오브젝트로 찾기
-    {
-        lineInt = Int32.Parse(idFild.text);  // 입력받은 필드를 int형으로 변경
-        ofString = objectFild.text;  //입력 받은 필드의 텍스쳐를 사용
-
-        if (lineInt < data.Count)
-        {
-            findFildText.text = data[lineInt][ofString].ToString();   // _myData = data[2]["Name"].ToString(); 앞의 이 코드를 대체
-
-        }
-        else
-        {
-            findFildText.text = "범위 밖입니다";
-        }
-    }
+    
 
     //전체 텍스트 보는 스크립트 (앞의 코드)
     void ShowText()
@@ -586,7 +769,6 @@ public class CSVAssetReader_Test : MonoBehaviour
         if (myTxt != null)
         {
             string currentText = myTxt.text.Substring(0, myTxt.text.Length - 1);
-            fildText.text = currentText;
         }
     }
 
