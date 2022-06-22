@@ -56,6 +56,9 @@ public class CSVAssetReader_Test : MonoBehaviour
     public GameObject variableOriginal;
     public GameObject CLine;
     public Text logText;
+    public GameObject error;
+
+    public Transform stepDetail;
 
 
     string[] lines;
@@ -74,6 +77,12 @@ public class CSVAssetReader_Test : MonoBehaviour
     string[] reser = {"#include", };
     string[] syn = { "for", "if", "return", };
     string[] ty = { "int", "void", };
+
+    public void StartError()
+    {
+        error.SetActive(true);
+
+    }
     private string hili(string s)
     {
         string result = "";
@@ -180,7 +189,7 @@ public class CSVAssetReader_Test : MonoBehaviour
     {
         if (log.text.IndexOf("error") != -1)
         {
-            currentRow = data.Count - 2;
+            currentRow = data.Count - 1;
             Next();
         }
         else
@@ -309,7 +318,7 @@ public class CSVAssetReader_Test : MonoBehaviour
         {
             GameObject go = GameObject.Instantiate(variableOriginal, variables);
             go.transform.GetChild(0).GetComponent<Text>().text = t.Item1;
-            go.transform.GetChild(1).GetComponent<Text>().text = data[currentRow+1][t.Item1].ToString();
+            go.transform.GetChild(1).GetComponent<Text>().text = currentRow+1<data.Count?data[currentRow+1][t.Item1].ToString():"??";
 
             int i = ss.IndexOf('=');
             
@@ -429,6 +438,7 @@ public class CSVAssetReader_Test : MonoBehaviour
         detailName.GetChild(0).GetComponent<Text>().text = name;
         string current = data[0][name].ToString();
         Image.Instantiate(original2, line3).transform.GetChild(0).GetComponent<Text>().text = data[0][kl[0]].ToString();
+        Image.Instantiate(original2, stepDetail).transform.GetChild(0).GetComponent<Text>().text = "1";
         Image.Instantiate(original, detail).transform.GetChild(0).GetComponent<Text>().text = current;
 
         for (int i=1; i < data.Count; i++)
@@ -437,6 +447,7 @@ public class CSVAssetReader_Test : MonoBehaviour
             {
                 current = data[i][name].ToString();
                 Image.Instantiate(original2, line3).transform.GetChild(0).GetComponent<Text>().text = data[i][kl[0]].ToString();
+                Image.Instantiate(original2, stepDetail).transform.GetChild(0).GetComponent<Text>().text = (i+1).ToString();
                 Image.Instantiate(original, detail).transform.GetChild(0).GetComponent<Text>().text = current;
             }
         }
@@ -444,7 +455,11 @@ public class CSVAssetReader_Test : MonoBehaviour
     
     public void ClearDetail()
     {
-        foreach(Transform child in line3)
+        foreach (Transform child in stepDetail)
+        {
+            GameObject.Destroy(child.gameObject);
+        }
+        foreach (Transform child in line3)
         {
             GameObject.Destroy(child.gameObject);
         }
@@ -594,6 +609,19 @@ public class CSVAssetReader_Test : MonoBehaviour
     }
     public void Next()
     {
+        if(log.text.IndexOf("error") != -1 && currentRow == data.Count - 1)
+        {
+            ClearFadeIn();
+            InitFadeIn();
+            StartError();
+            //currentRow++;
+            prior.interactable = true;
+            line2.parent.parent.gameObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 1 - (float)(Int32.Parse(data[currentRow][kl[0]].ToString()) - 1) / data.Count;
+            code.parent.parent.gameObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 1 - (float)(Int32.Parse(data[currentRow][kl[0]].ToString()) - 1) / data.Count;
+            next.interactable = false;
+            return;
+        }
+
         ClearFadeIn();
         InitFadeIn();
         diffCnt = 0;
@@ -619,16 +647,24 @@ public class CSVAssetReader_Test : MonoBehaviour
         
 
         ColorCurrent();
-        if (currentRow+1 >= data.Count)
+        if (currentRow+1 == data.Count)
         {
-            next.interactable = false;
+            if (log.text.IndexOf("error") != -1)
+            {
+                next.interactable = true;
+            }
             //각 버튼비활성화
             return;
         }
     }
     
     public void Prior()
-    {   diffCnt = 0;
+    {
+        currentRow--;
+        ClearFadeIn();
+        InitFadeIn();
+        currentRow++;
+        diffCnt = 0;
         foreach (string s in kl2)
         {
             if (!data[currentRow][s].Equals(data[currentRow - 1][s]))
