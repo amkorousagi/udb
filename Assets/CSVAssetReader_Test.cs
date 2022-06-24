@@ -610,11 +610,13 @@ public class CSVAssetReader_Test : MonoBehaviour
     public void Next()
     {
         if(log.text.IndexOf("error") != -1 && currentRow == data.Count - 1)
-        {
+        { 
+            currentRow--;
+            Next();
             ClearFadeIn();
             InitFadeIn();
             StartError();
-            //currentRow++;
+           
             prior.interactable = true;
             line2.parent.parent.gameObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 1 - (float)(Int32.Parse(data[currentRow][kl[0]].ToString()) - 1) / data.Count;
             code.parent.parent.gameObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 1 - (float)(Int32.Parse(data[currentRow][kl[0]].ToString()) - 1) / data.Count;
